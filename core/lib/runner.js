@@ -65,6 +65,8 @@ function runner(script, payload, options, callback) {
 
   if (payload) {
     if (_.isArray(payload[0])) {
+      let el = { data: payload };
+      assignPayload(script, el);
       script.config.payload = [
         {
           fields: script.config.payload.fields,
@@ -75,6 +77,7 @@ function runner(script, payload, options, callback) {
     } else {
       script.config.payload = payload;
       _.each(script.config.payload, function(el) {
+        assignPayload(script, el);
         el.reader = createReader(el.order);
       });
     }
@@ -241,6 +244,25 @@ function runner(script, payload, options, callback) {
   }
 
   return promise;
+}
+
+// if using payload and multi workers, split payload and assign to each worker
+function assignPayload(script, payload) {
+  if (script.config.numWorkers > 1) {
+    var payloads = splitArray(payload.data, script.config.numWorkers);
+    payload.data = payloads[script.config.idxWorker];
+  }
+}
+
+// split array using lodash chunk
+function splitArray(flatArray, numCols) {
+  const maxColLength = Math.ceil(flatArray.length/numCols)
+  const nestedArray = _.chunk(flatArray, maxColLength)
+  let newArray = []
+  for (var i = 0; i < numCols; i++) {
+    newArray[i] = nestedArray[i] || []
+  }
+  return newArray
 }
 
 function run(script, ee, options, runState) {
